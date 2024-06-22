@@ -22,7 +22,7 @@ struct Args {
     output: std::path::PathBuf,
     /// The width
     #[arg(short = 'c')]
-    width_percentage: f64,
+    compression_rate: f64,
 }
 
 fn main() -> eyre::Result<()> {
@@ -30,7 +30,7 @@ fn main() -> eyre::Result<()> {
         old_input,
         new_input,
         output,
-        width_percentage,
+        compression_rate,
     } = Args::try_parse()?;
 
     std::fs::create_dir_all(&output)?;
@@ -159,8 +159,11 @@ fn main() -> eyre::Result<()> {
                 let c =
                     load_slice::<f32>(new_tensors.remove(&format!("c.{name}")).unwrap()).unwrap();
 
-                let width = (c.len() as f64 * width_percentage) as usize;
-                let width = width.clamp(1, c.len());
+                let width = (((nrows * ncols * 2) as f64
+                    / (4 + nrows.next_multiple_of(64) / 8 + ncols.next_multiple_of(64) / 8) as f64)
+                    * compression_rate) as usize;
+                let width = Ord::max(8, width);
+                assert!(width <= c.len());
 
                 let s = SignMatRef::from_storage(
                     cuts_v2::MatRef::from_col_major_slice(

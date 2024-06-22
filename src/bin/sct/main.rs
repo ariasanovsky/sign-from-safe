@@ -93,7 +93,6 @@ fn main() -> eyre::Result<()> {
     let tmp = tempdir::TempDir::new_in("./target", "safetensors")?;
     let (outfiles, mut err): (Vec<_>, Vec<_>) = tensors
         .into_iter()
-        .filter(|(_, _, view)| view.shape() == &[1024, 4096])
         .filter(|(_, _, view)| view.shape().len() == 2)
         .sorted_by_key(|(_, _, view)| std::cmp::Reverse(view.shape().iter().product::<usize>()))
         .chunk_by(|(_, _, view)| view.shape().iter().product::<usize>())
