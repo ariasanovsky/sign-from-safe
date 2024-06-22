@@ -1,0 +1,24 @@
+[package]
+name = "signtensors"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "sct"
+
+[dependencies]
+bytemuck = "1.16.0"
+candle-core = { version = "0.5.1" }
+chrono = "0.4.38"
+clap = { version = "4.5.7", features = ["derive"] }
+cuts-v2 = { version = "0.1.0", path = "../cuts" }
+equator = "0.2.2"
+eyre = "0.6.12"
+faer = "0.19.0"
+half = "2.4.1"
+linya = "0.3.0"
+memmap2 = "0.9.4"
+rand = "0.8.5"
+rayon = "1.10.0"
+reborrow = "0.5.5"
+safetensors = "0.4.3"
