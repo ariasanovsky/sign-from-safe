@@ -104,7 +104,7 @@ fn main() -> eyre::Result<()> {
                 .map(|(stem, name, view)| {
                     let state = &mut DefaultHasher::new();
                     state.write(name.as_bytes());
-                    let ref mut rng = StdRng::seed_from_u64(state.finish());
+                    let rng = &mut StdRng::seed_from_u64(state.finish());
 
                     let mat = load_matrix_f32(&view).unwrap();
                     let (nrows, ncols) = mat.shape();
@@ -222,10 +222,10 @@ fn main() -> eyre::Result<()> {
                             _ => {}
                         }
                     }
-                    return (
+                    (
                         format!("{stem}"),
                         (name, outpath, f32::sqrt(remainder_norm / init_norm)),
-                    );
+                    )
                 })
                 .collect::<Vec<_>>()
         })

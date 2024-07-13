@@ -27,7 +27,9 @@ pub fn store_f32_matrix_to_bf16(mat: faer::MatRef<'_, f32>) -> Vec<u8> {
         for i in 0..nrows {
             let ij = j + ncols * i;
             let data: &mut [u8; 2] = (&mut data[ij..][..2]).try_into().unwrap();
-            *data = unsafe { core::mem::transmute(half::bf16::from_f32(mat[(i, j)])) };
+            *data = unsafe {
+                core::mem::transmute::<half::bf16, [u8; 2]>(half::bf16::from_f32(mat[(i, j)]))
+            };
         }
     }
     data

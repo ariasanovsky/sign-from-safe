@@ -1,3 +1,3 @@
-#[cfg(test)]
-mod candle;
 pub mod safetensors;
+#[cfg(test)]
+mod test;
