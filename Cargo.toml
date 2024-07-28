@@ -8,6 +8,9 @@ license = "MIT OR Apache-2.0"
 candle = ["candle-core"]
 
 [[bin]]
+name = "compare"
+
+[[bin]]
 name = "sct"
 
 [[bin]]

@@ -1,11 +1,10 @@
-use std::{collections::HashMap, fs::File};
+use std::collections::HashMap;
 
 use clap::Parser;
 use cuts_v2::{sct::SctRef, SignMatRef};
 use faer::Mat;
-use memmap2::MmapOptions;
-use safetensors::{serialize_to_file, tensor::TensorView, Dtype, SafeTensors, View};
-use signtensors::safetensors::{load_matrix_f32, load_slice, store_f32_matrix_to_bf16};
+use safetensors::{serialize_to_file, tensor::TensorView, Dtype, View};
+use signtensors::{safetensors::{load_matrix_f32, load_slice, store_f32_matrix_to_bf16}, MappedSafetensors};
 
 #[derive(Debug, Parser)]
 #[command(name = "SCT")]
@@ -35,76 +34,83 @@ fn main() -> eyre::Result<()> {
 
     std::fs::create_dir_all(&output)?;
 
-    let old_buffers = old_input
-        .as_path()
-        .read_dir()?
-        .filter_map(|entry| {
-            let file = entry.unwrap().path();
-            match file.extension() {
-                Some(ext) if ext.eq("safetensors") => {
-                    let stem = file.file_stem().unwrap().to_os_string();
-                    let file = File::open(file).unwrap();
-                    let buffer = unsafe { MmapOptions::new().map(&file) }.unwrap();
-                    Some((stem, buffer))
-                }
-                _ => None,
-            }
-        })
-        .collect::<Vec<_>>();
-    let old_safetensors = old_buffers
-        .iter()
-        .map(|(stem, buffer)| {
-            let tensors = SafeTensors::deserialize(buffer).unwrap();
-            (stem, SafeTensors::read_metadata(buffer).unwrap(), tensors)
-        })
-        .collect::<Vec<_>>();
-    let old_tensors = old_safetensors
-        .iter()
-        .map(|(stem, metadata, tensors)| {
-            (
-                stem.to_string_lossy().to_string(),
-                (
-                    metadata,
-                    tensors.tensors().into_iter().collect::<HashMap<_, _>>(),
-                ),
-            )
-        })
-        .collect::<HashMap<_, _>>();
-
-    let new_buffers = new_input
-        .as_path()
-        .read_dir()?
-        .filter_map(|entry| {
-            let file = entry.unwrap().path();
-            match file.extension() {
-                Some(ext) if ext.eq("safetensors") => {
-                    let stem = file.file_stem().unwrap().to_os_string();
-                    let file = File::open(file).unwrap();
-                    let buffer = unsafe { MmapOptions::new().map(&file) }.unwrap();
-                    Some((stem, buffer))
-                }
-                _ => None,
-            }
-        })
-        .collect::<Vec<_>>();
-    let new_safetensors = new_buffers
-        .iter()
-        .map(|(stem, buffer)| {
-            let tensors = SafeTensors::deserialize(buffer).unwrap();
-            (stem, tensors)
-        })
-        .collect::<Vec<_>>();
-    let mut new_tensors = new_safetensors
-        .iter()
-        .map(|(stem, tensors)| {
-            (
-                stem.to_string_lossy().to_string(),
-                tensors.tensors().into_iter().collect::<HashMap<_, _>>(),
-            )
-        })
-        .collect::<HashMap<_, _>>();
-
-    for (stem, (metadata, old_tensors)) in old_tensors {
+    // let old_buffers = old_input
+    //     .as_path()
+    //     .read_dir()?
+    //     .filter_map(|entry| {
+    //         let file = entry.unwrap().path();
+    //         match file.extension() {
+    //             Some(ext) if ext.eq("safetensors") => {
+    //                 let stem = file.file_stem().unwrap().to_os_string();
+    //                 let file = File::open(file).unwrap();
+    //                 let buffer = unsafe { MmapOptions::new().map(&file) }.unwrap();
+    //                 Some((stem, buffer))
+    //             }
+    //             _ => None,
+    //         }
+    //     })
+    //     .collect::<Vec<_>>();
+    // let old_safetensors = old_buffers
+    //     .iter()
+    //     .map(|(stem, buffer)| {
+    //         let tensors = SafeTensors::deserialize(buffer).unwrap();
+    //         (stem, SafeTensors::read_metadata(buffer).unwrap(), tensors)
+    //     })
+    //     .collect::<Vec<_>>();
+    // let old_tensors = old_safetensors
+    //     .iter()
+    //     .map(|(stem, metadata, tensors)| {
+    //         (
+    //             stem.to_string_lossy().to_string(),
+    //             (
+    //                 metadata,
+    //                 tensors.tensors().into_iter().collect::<HashMap<_, _>>(),
+    //             ),
+    //         )
+    //     })
+    //     .collect::<HashMap<_, _>>();
+    let old_buffers = MappedSafetensors::new(old_input);
+    let old_safetensors = old_buffers.deserialize();
+    let old_tensors = old_safetensors.tensors();
+    // let new_buffers = new_input
+    //     .as_path()
+    //     .read_dir()?
+    //     .filter_map(|entry| {
+    //         let file = entry.unwrap().path();
+    //         match file.extension() {
+    //             Some(ext) if ext.eq("safetensors") => {
+    //                 let stem = file.file_stem().unwrap().to_os_string();
+    //                 let file = File::open(file).unwrap();
+    //                 let buffer = unsafe { MmapOptions::new().map(&file) }.unwrap();
+    //                 Some((stem, buffer))
+    //             }
+    //             _ => None,
+    //         }
+    //     })
+    //     .collect::<Vec<_>>();
+    // let new_safetensors = new_buffers
+    //     .iter()
+    //     .map(|(stem, buffer)| {
+    //         let tensors = SafeTensors::deserialize(buffer).unwrap();
+    //         (stem, tensors)
+    //     })
+    //     .collect::<Vec<_>>();
+    // let mut new_tensors = new_safetensors
+    //     .iter()
+    //     .map(|(stem, tensors)| {
+    //         (
+    //             stem.to_string_lossy().to_string(),
+    //             tensors.tensors().into_iter().collect::<HashMap<_, _>>(),
+    //         )
+    //     })
+    //     .collect::<HashMap<_, _>>();
+    let new_buffers = MappedSafetensors::new(new_input);
+    let new_safetensors = new_buffers.deserialize();
+    let new_tensors = new_safetensors.tensors();
+    let mut new_tensors = new_tensors.into_iter().map(|(stem, (_, _, tensors))| {
+        (stem.clone(), tensors.into_iter().collect::<HashMap<_, _>>())
+    }).collect::<HashMap<_, _>>();
+    for (stem, (_, metadata, old_tensors)) in old_tensors {
         let mut new_tensors = new_tensors.remove(&stem).unwrap();
         let iter = old_tensors.into_iter().map(|(name, original)| {
             struct SctTensor<'a> {
@@ -200,7 +206,7 @@ fn main() -> eyre::Result<()> {
 
         serialize_to_file(
             iter,
-            metadata.1.metadata(),
+            metadata.metadata(),
             &output.join(&format!("{stem}.safetensors")),
         )
         .unwrap();
