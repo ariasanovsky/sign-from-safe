@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use equator::assert;
 use clap::Parser;
@@ -27,6 +27,7 @@ fn main() -> eyre::Result<()> {
     let new_buffers = MappedSafetensors::new(new_input);
     let new_safetensors = new_buffers.deserialize();
     let mut new_tensors = new_safetensors.tensors();
+    let mut errors: HashMap<[usize; 2], (f32, f32)> = Default::default();
     for (stem, (header, metadata, tensors)) in old_tensors {
         let (new_header, new_metadata, mut new_tensors) = new_tensors.remove(&stem).unwrap();
         println!("stem: {stem}");
@@ -41,20 +42,32 @@ fn main() -> eyre::Result<()> {
             let new_mat = load_matrix_f32(&new_view);
             match mat {
                 Some(mat) => {
-                    println!("{name}");
                     let norm = mat.norm_l2();
                     let new_mat = new_mat.unwrap();
                     let new_norm = new_mat.norm_l2();
                     if !norm.is_finite() || !new_norm.is_finite() {
+                        println!("{name}");
                         println!("old defects: {:?}\nnew defects: {:?}", count_defects(mat.as_ref()), count_defects(new_mat.as_ref()))
                     } else {
-                        let diff = (mat - new_mat).norm_l2();
-                        println!("error: {}/{} = {}", diff, norm, diff / norm);
+                        let diff = (mat - new_mat).norm_l2() / norm;
+                        let shape: [usize; 2] = view.shape().try_into().unwrap();
+                        errors.entry(shape).and_modify(|(min, max)| {
+                            *min = min.min(diff);
+                            *max = max.max(diff);
+                        }).or_insert((diff, diff));
+                        // println!("{name}");
+                        // println!("error: {}/{} = {}", diff, norm, diff / norm);
                     }
                 },
-                None => assert!(new_mat.is_none()),
+                None => {
+                    assert!(new_mat.is_none());
+                    assert!(view.data() == new_view.data(), "{name}");
+                },
             }
         }
+    }
+    for (shape, (min, max)) in errors.into_iter() {
+        println!("{shape:?}: {min}..{max}");
     }
     Ok(())
 }

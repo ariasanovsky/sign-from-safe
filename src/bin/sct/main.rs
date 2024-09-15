@@ -1,5 +1,5 @@
 use clap::Parser;
-use cuts_v2::{
+use cuts::{
     inplace_sct::CutHelper,
     sct::{Sct, SctMut, SctRef},
 };
@@ -155,8 +155,8 @@ fn main() -> eyre::Result<()> {
                             {
                                 let SctRef { s, c, t } = sct_block.as_ref();
                                 let two_remainder =
-                                    cuts_v2::MatMut::from_faer(two_remainder.as_mut());
-                                cuts_v2::bitmagic::matmul::mat_tmat_f32(
+                                    cuts::MatMut::from_faer(two_remainder.as_mut());
+                                cuts::bitmagic::matmul::mat_tmat_f32(
                                     two_remainder,
                                     s.rb(),
                                     t.rb(),
@@ -199,8 +199,8 @@ fn main() -> eyre::Result<()> {
                                 {
                                     let SctMut { mut s, c, mut t } = sct_block.as_mut();
                                     let two_remainder =
-                                        cuts_v2::MatMut::from_faer(two_remainder.as_mut());
-                                    cuts_v2::bitmagic::matmul::mat_tmat_f32(
+                                        cuts::MatMut::from_faer(two_remainder.as_mut());
+                                    cuts::bitmagic::matmul::mat_tmat_f32(
                                         two_remainder,
                                         s.rb_mut().split_at_col_mut(how_full).0.rb(),
                                         t.rb_mut().split_at_col_mut(how_full).0.rb(),

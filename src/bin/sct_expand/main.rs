@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use clap::Parser;
-use cuts_v2::{sct::SctRef, SignMatRef};
+use cuts::{sct::SctRef, SignMatRef};
 use faer::Mat;
 use safetensors::{serialize_to_file, tensor::TensorView, Dtype, View};
 use signtensors::{safetensors::{load_matrix_f32, load_slice, store_f32_matrix_to_bf16}, MappedSafetensors};
@@ -133,8 +133,8 @@ fn main() -> eyre::Result<()> {
                             let original = load_matrix_f32(&self.old).unwrap();
                             let (nrows, ncols) = original.shape();
                             let mut new = Mat::<f32>::zeros(nrows, ncols);
-                            cuts_v2::bitmagic::matmul::mat_tmat_f32(
-                                cuts_v2::MatMut::from_faer(new.as_mut()),
+                            cuts::bitmagic::matmul::mat_tmat_f32(
+                                cuts::MatMut::from_faer(new.as_mut()),
                                 s,
                                 t,
                                 c,
@@ -172,7 +172,7 @@ fn main() -> eyre::Result<()> {
                 assert!(width <= c.len());
 
                 let s = SignMatRef::from_storage(
-                    cuts_v2::MatRef::from_col_major_slice(
+                    cuts::MatRef::from_col_major_slice(
                         s,
                         nrows.div_ceil(64),
                         width,
@@ -181,7 +181,7 @@ fn main() -> eyre::Result<()> {
                     nrows,
                 );
                 let t = SignMatRef::from_storage(
-                    cuts_v2::MatRef::from_col_major_slice(
+                    cuts::MatRef::from_col_major_slice(
                         t,
                         ncols.div_ceil(64),
                         width,
