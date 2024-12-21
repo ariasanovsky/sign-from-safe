@@ -1,10 +1,13 @@
 use std::collections::HashMap;
 
 use clap::Parser;
-use cuts::{sct::SctRef, SignMatRef};
 use faer::Mat;
 use safetensors::{serialize_to_file, tensor::TensorView, Dtype, View};
-use signtensors::{safetensors::{load_matrix_f32, load_slice, store_f32_matrix_to_bf16}, MappedSafetensors};
+use sign_from_safe::{
+    safetensors::{load_matrix_f32, load_slice, store_f32_matrix_to_bf16},
+    MappedSafetensors,
+};
+use signtensors::{sct::SctRef, SignMatRef};
 
 #[derive(Debug, Parser)]
 #[command(name = "SCT")]
@@ -107,9 +110,12 @@ fn main() -> eyre::Result<()> {
     let new_buffers = MappedSafetensors::new(new_input);
     let new_safetensors = new_buffers.deserialize();
     let new_tensors = new_safetensors.tensors();
-    let mut new_tensors = new_tensors.into_iter().map(|(stem, (_, _, tensors))| {
-        (stem.clone(), tensors.into_iter().collect::<HashMap<_, _>>())
-    }).collect::<HashMap<_, _>>();
+    let mut new_tensors = new_tensors
+        .into_iter()
+        .map(|(stem, (_, _, tensors))| {
+            (stem.clone(), tensors.into_iter().collect::<HashMap<_, _>>())
+        })
+        .collect::<HashMap<_, _>>();
     for (stem, (_, metadata, old_tensors)) in old_tensors {
         let mut new_tensors = new_tensors.remove(&stem).unwrap();
         let iter = old_tensors.into_iter().map(|(name, original)| {
@@ -133,8 +139,8 @@ fn main() -> eyre::Result<()> {
                             let original = load_matrix_f32(&self.old).unwrap();
                             let (nrows, ncols) = original.shape();
                             let mut new = Mat::<f32>::zeros(nrows, ncols);
-                            cuts::bitmagic::matmul::mat_tmat_f32(
-                                cuts::MatMut::from_faer(new.as_mut()),
+                            signtensors::bitmagic::matmul::mat_tmat_f32(
+                                signtensors::MatMut::from_faer(new.as_mut()),
                                 s,
                                 t,
                                 c,
@@ -172,7 +178,7 @@ fn main() -> eyre::Result<()> {
                 assert!(width <= c.len());
 
                 let s = SignMatRef::from_storage(
-                    cuts::MatRef::from_col_major_slice(
+                    signtensors::MatRef::from_col_major_slice(
                         s,
                         nrows.div_ceil(64),
                         width,
@@ -181,7 +187,7 @@ fn main() -> eyre::Result<()> {
                     nrows,
                 );
                 let t = SignMatRef::from_storage(
-                    cuts::MatRef::from_col_major_slice(
+                    signtensors::MatRef::from_col_major_slice(
                         t,
                         ncols.div_ceil(64),
                         width,

@@ -1,8 +1,8 @@
 use std::collections::{HashMap, HashSet};
 
-use equator::assert;
 use clap::Parser;
-use signtensors::{safetensors::load_matrix_f32, MappedSafetensors};
+use equator::assert;
+use sign_from_safe::{safetensors::load_matrix_f32, MappedSafetensors};
 
 #[derive(Debug, Parser)]
 #[command(name = "SCT")]
@@ -34,7 +34,8 @@ fn main() -> eyre::Result<()> {
         assert!(all(
             header == new_header,
             metadata.metadata() == new_metadata.metadata(),
-            metadata.tensors().keys().collect::<HashSet<_>>() == new_metadata.tensors().keys().collect::<HashSet<_>>(),
+            metadata.tensors().keys().collect::<HashSet<_>>()
+                == new_metadata.tensors().keys().collect::<HashSet<_>>(),
         ));
         for (name, view) in tensors {
             let new_view = new_tensors.remove(&name).unwrap();
@@ -47,22 +48,29 @@ fn main() -> eyre::Result<()> {
                     let new_norm = new_mat.norm_l2();
                     if !norm.is_finite() || !new_norm.is_finite() {
                         println!("{name}");
-                        println!("old defects: {:?}\nnew defects: {:?}", count_defects(mat.as_ref()), count_defects(new_mat.as_ref()))
+                        println!(
+                            "old defects: {:?}\nnew defects: {:?}",
+                            count_defects(mat.as_ref()),
+                            count_defects(new_mat.as_ref())
+                        )
                     } else {
                         let diff = (mat - new_mat).norm_l2() / norm;
                         let shape: [usize; 2] = view.shape().try_into().unwrap();
-                        errors.entry(shape).and_modify(|(min, max)| {
-                            *min = min.min(diff);
-                            *max = max.max(diff);
-                        }).or_insert((diff, diff));
+                        errors
+                            .entry(shape)
+                            .and_modify(|(min, max)| {
+                                *min = min.min(diff);
+                                *max = max.max(diff);
+                            })
+                            .or_insert((diff, diff));
                         // println!("{name}");
                         // println!("error: {}/{} = {}", diff, norm, diff / norm);
                     }
-                },
+                }
                 None => {
                     assert!(new_mat.is_none());
                     assert!(view.data() == new_view.data(), "{name}");
-                },
+                }
             }
         }
     }
@@ -92,5 +100,9 @@ fn count_defects(mat: faer::MatRef<f32>) -> Defects {
             }
         }
     }
-    Defects { nans, infs, norm: norm.sqrt() }
+    Defects {
+        nans,
+        infs,
+        norm: norm.sqrt(),
+    }
 }

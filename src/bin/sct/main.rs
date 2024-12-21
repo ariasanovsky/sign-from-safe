@@ -1,8 +1,4 @@
 use clap::Parser;
-use cuts::{
-    inplace_sct::CutHelper,
-    sct::{Sct, SctMut, SctRef},
-};
 use faer::{
     dyn_stack::{GlobalPodBuffer, PodStack, StackReq},
     linalg::temp_mat_req,
@@ -14,7 +10,11 @@ use rand::prelude::*;
 use rayon::prelude::*;
 use reborrow::{Reborrow, ReborrowMut};
 use safetensors::{serialize_to_file, SafeTensors};
-use signtensors::{safetensors::load_matrix_f32, MappedSafetensors};
+use sign_from_safe::{safetensors::load_matrix_f32, MappedSafetensors};
+use signtensors::{
+    inplace_sct::CutHelper,
+    sct::{Sct, SctMut, SctRef},
+};
 use std::{
     collections::HashMap,
     fs::File,
@@ -91,14 +91,16 @@ fn main() -> eyre::Result<()> {
     let buffers = MappedSafetensors::new(input);
     let safetensors = buffers.deserialize();
     let tensors = safetensors.tensors();
-    let tensors = tensors.into_iter()
+    let tensors = tensors
+        .into_iter()
         .flat_map(|(stem, (_, _, t))| {
             t.into_iter()
                 .map(move |(name, view)| (stem.clone(), name, view))
-        }).collect::<Vec<_>>();
+        })
+        .collect::<Vec<_>>();
     let progress = Mutex::new(Progress::new());
 
-    let tmp = tempdir::TempDir::new_in("./target", "safetensors")?;
+    let tmp = tempfile::TempDir::with_prefix_in("safetensors", "./target")?;
     let (outfiles, mut err): (Vec<_>, Vec<_>) = tensors
         .into_iter()
         .filter(|(_, _, view)| view.shape().len() == 2)
@@ -155,8 +157,8 @@ fn main() -> eyre::Result<()> {
                             {
                                 let SctRef { s, c, t } = sct_block.as_ref();
                                 let two_remainder =
-                                    cuts::MatMut::from_faer(two_remainder.as_mut());
-                                cuts::bitmagic::matmul::mat_tmat_f32(
+                                    signtensors::MatMut::from_faer(two_remainder.as_mut());
+                                signtensors::bitmagic::matmul::mat_tmat_f32(
                                     two_remainder,
                                     s.rb(),
                                     t.rb(),
@@ -199,8 +201,8 @@ fn main() -> eyre::Result<()> {
                                 {
                                     let SctMut { mut s, c, mut t } = sct_block.as_mut();
                                     let two_remainder =
-                                        cuts::MatMut::from_faer(two_remainder.as_mut());
-                                    cuts::bitmagic::matmul::mat_tmat_f32(
+                                        signtensors::MatMut::from_faer(two_remainder.as_mut());
+                                    signtensors::bitmagic::matmul::mat_tmat_f32(
                                         two_remainder,
                                         s.rb_mut().split_at_col_mut(how_full).0.rb(),
                                         t.rb_mut().split_at_col_mut(how_full).0.rb(),
